@@ -12,6 +12,24 @@
 #include "common.h"
 #include "Stream.h"
 
+static const uint32_t mac_to_unicode[128] = {
+    0x00C4,0x00C5,0x00C7,0x00C9,0x00D1,0x00D6,0x00DC,0x00E1,
+    0x00E0,0x00E2,0x00E4,0x00E3,0x00E5,0x00E7,0x00E9,0x00E8,
+    0x00EA,0x00EB,0x00ED,0x00EC,0x00EE,0x00EF,0x00F1,0x00F3,
+    0x00F2,0x00F4,0x00F6,0x00F5,0x00FA,0x00F9,0x00FB,0x00FC,
+    0x2020,0x00B0,0x00A2,0x00A3,0x00A7,0x2022,0x00B6,0x00DF,
+    0x00AE,0x00A9,0x2122,0x00B4,0x00A8,0x2260,0x00C6,0x00D8,
+    0x221E,0x00B1,0x2264,0x2265,0x00A5,0x00B5,0x2202,0x2211,
+    0x220F,0x03C0,0x222B,0x00AA,0x00BA,0x03A9,0x00E6,0x00F8,
+    0x00BF,0x00A1,0x00AC,0x221A,0x0192,0x2248,0x2206,0x00AB,
+    0x00BB,0x2026,0x00A0,0x00C0,0x00C3,0x00D5,0x0152,0x0153,
+    0x2013,0x2014,0x201C,0x201D,0x2018,0x2019,0x00F7,0x25CA,
+    0x00FF,0x0178,0x2044,0x20AC,0x2039,0x203A,0xFB01,0xFB02,
+    0x2021,0x00B7,0x201A,0x201E,0x2030,0x00C2,0x00CA,0x00C1,
+    0x00CB,0x00C8,0x00CD,0x00CE,0x00CF,0x00CC,0x00D3,0x00D4,
+    0xF8FF,0x00D2,0x00DA,0x00DB,0x00D9,0x0131,0x02C6,0x02DC,
+    0x00AF,0x02D8,0x02D9,0x02DA,0x00B8,0x02DD,0x02DB,0x02C7,
+};
 
 int64_t Cmp4Parse::io_seek(void *opaque, int64_t offset, int whence)
 {
@@ -19,7 +37,7 @@ int64_t Cmp4Parse::io_seek(void *opaque, int64_t offset, int whence)
         return -1;
 
      Cmp4Parse *ptr = (Cmp4Parse *)opaque;
-     printf("offset=%d\n",offset );
+   //  printf("offset=%d\n",offset );
      return lseek(ptr->m_fb,offset,whence);
 }
 
@@ -56,6 +74,9 @@ MOVParseTableEntry Cmp4Parse::mov_default_parse_table[] = {
     { MKTAG('s','t','c','o'), Cmp4Parse::mov_read_stco},
     { MKTAG('s','t','s','c'), Cmp4Parse::mov_read_stsc},
     { MKTAG('s','t','s','z'), Cmp4Parse::mov_read_stsz},
+    { MKTAG('s','t','s','d'), Cmp4Parse::mov_read_stsd},
+    { MKTAG('a','v','c','C'), Cmp4Parse::mov_read_glbl},
+
    
     {0,0}
 };
@@ -179,7 +200,7 @@ int Cmp4Parse::mov_read_header()
           //  mov_read_close(s);
             return err;
         }
-        printf("------2------%d\n",m_moov_retry);
+        //printf("------2------%d\n",m_moov_retry);
     } while ((m_pb->m_seekable & AVIO_SEEKABLE_NORMAL) && !m_found_moov && !m_moov_retry++);
 
     return 0;
@@ -278,7 +299,7 @@ int Cmp4Parse::mov_read_default(Cmp4Parse* cxt,CIOContext* pb,MOVAtom atom)
             
 
             a.type = pb->avio_rl32();
-            printf(" a.size :%d --------0---------:%c %c %c %c\n", a.size ,*((char*)&a.type + 0),*((char*)&a.type + 1),*((char*)&a.type + 2),*((char*)&a.type + 3) );
+           // printf(" a.size :%d --------0---------:%c %c %c %c\n", a.size ,*((char*)&a.type + 0),*((char*)&a.type + 1),*((char*)&a.type + 2),*((char*)&a.type + 3) );
             if (a.type == MKTAG('f','r','e','e') &&
                 a.size >= 8 &&
                 cxt->m_strict_std_compliance < FF_COMPLIANCE_STRICT &&
@@ -318,7 +339,7 @@ int Cmp4Parse::mov_read_default(Cmp4Parse* cxt,CIOContext* pb,MOVAtom atom)
         if (a.size == 0) {
 
             a.size = atom.size - total_size + 8;
-            printf("--------1----:%d atom.size:%d total_size:%d\n", a.size ,atom.size,total_size );
+         //   printf("--------1----:%d atom.size:%d total_size:%d\n", a.size ,atom.size,total_size );
         }
         a.size -= 8;
         if (a.size < 0)
@@ -345,7 +366,7 @@ int Cmp4Parse::mov_read_default(Cmp4Parse* cxt,CIOContext* pb,MOVAtom atom)
         }
 
         if (!parse) { /* skip leaf atoms data */
-            printf("===========> skip - %d (%c %c %c %c)\n",a.size,*((char*)&a.type + 0),*((char*)&a.type + 1),*((char*)&a.type + 2),*((char*)&a.type + 3));
+          //  printf("===========> skip - %d (%c %c %c %c)\n",a.size,*((char*)&a.type + 0),*((char*)&a.type + 1),*((char*)&a.type + 2),*((char*)&a.type + 3));
             pb->avio_skip(a.size);
         } else {
             int64_t start_pos = pb->avio_tell();
@@ -376,7 +397,7 @@ int Cmp4Parse::mov_read_default(Cmp4Parse* cxt,CIOContext* pb,MOVAtom atom)
         }
          
         total_size += a.size;
-         printf("total_size:%d a.size:%d\n",total_size,a.size );
+       //  printf("total_size:%d a.size:%d\n",total_size,a.size );
     }
 
     if (total_size < atom.size && atom.size < 0x7ffff)
@@ -740,11 +761,11 @@ void Cmp4Parse::mov_build_index(Cmp4Parse *mov, CStream *st)
                 current_offset += size;
                 current_dts += samples;
                 chunk_samples -= samples;
-                if (last_current_offset != 0) {
-                    printf( "AVIndex stream %d, chunk %u, offset %"PRIx64", dts %"PRId64", "
-                       "size %u, duration %u  crrent_size %u\n", st->m_index, i, current_offset, current_dts,
-                       current_offset - last_current_offset , samples ,size);
-                }
+                //if (last_current_offset != 0) {
+           //         printf( "AVIndex stream %d, chunk %u, offset %"PRIx64", dts %"PRId64", "
+             //          "size %u, duration %u  crrent_size %u\n", st->m_index, i, current_offset, current_dts,
+               //        current_offset - last_current_offset , samples ,size);
+                //}
                 last_current_offset = current_offset;
                 
         }
@@ -792,7 +813,7 @@ int Cmp4Parse::mov_read_stsz(Cmp4Parse *c, CIOContext *pb, MOVAtom atom)
 
     entries = pb->avio_rb32();
 
-    printf("sample_size = %u sample_count = %u field_size=%d\n", sc->sample_size, entries,field_size);
+   // printf("sample_size = %u sample_count = %u field_size=%d\n", sc->sample_size, entries,field_size);
 
     sc->sample_count = entries;
     if (sample_size)
@@ -849,6 +870,428 @@ int Cmp4Parse::mov_read_stsz(Cmp4Parse *c, CIOContext *pb, MOVAtom atom)
         return AVERROR_EOF;
     }
 
+
+
+    return 0;
+}
+
+int Cmp4Parse::mov_read_stsd(Cmp4Parse *c, CIOContext *pb, MOVAtom atom)
+{
+    CStream *st;
+    MOVStreamContext *sc;
+    int ret,entries;
+
+    /**
+    * @ 在找到trak时已经建立了CStream
+    */
+    if (c->m_nb_streams < 1)
+        return 0;
+    st = c->m_streams[c->m_nb_streams-1];
+    sc = (MOVStreamContext*)st->m_priv_data;
+
+    pb->avio_r8(); /* version */
+    pb->avio_rb24(); /* flags */
+
+    entries = pb->avio_rb32();
+
+    /* Each entry contains a size (4 bytes) and format (4 bytes). */
+    if (entries <= 0 || entries > atom.size / 8) {
+        printf("invalid STSD entries %d\n", entries);
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (sc->extradata) {
+        printf("Duplicate stsd found in this track.\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    /* Prepare space for hosting multiple extradata. */
+    sc->extradata = (uint8_t**)malloc(entries*sizeof(*sc->extradata));
+    if (!sc->extradata)
+        return AVERROR(ENOMEM);
+
+    sc->extradata_size = (int*)malloc(entries*sizeof(*sc->extradata_size));
+    if (!sc->extradata_size) {
+        ret = AVERROR(ENOMEM);
+        goto fail;
+    }
+
+    /* Restore back the primary extradata. */
+    if (st->m_codec->m_extradata) {
+        free(st->m_codec->m_extradata);    
+        st->m_codec->m_extradata = NULL;
+    }
+
+    ret = ff_mov_read_stsd_entries(c, pb, entries);
+    if (ret < 0)
+        goto fail;
+    printf("entries:%d\n",entries );
+
+
+
+    //st->m_codec->m_extradata_size = sc->extradata_size[0];
+    printf("sc->extradata_size[0]：%d\n",st->m_codec->m_extradata_size);
+    if (sc->extradata_size[0]) {
+
+        st->m_codec->m_extradata = (uint8_t*)malloc(sc->extradata_size[0] + AV_INPUT_BUFFER_PADDING_SIZE);
+        if (!st->m_codec->m_extradata)
+            return AVERROR(ENOMEM);
+        memcpy(st->m_codec->m_extradata, sc->extradata[0], sc->extradata_size[0]);
+    }
+    
+
+    printf("mov_read_stsd\n" );
+    return 0;
+
+fail:
+    if (sc->extradata) {
+        int j;
+        for (j = 0; j < sc->stsd_count; j++) {
+            free(sc->extradata[j]);
+            sc->extradata[j]=NULL;
+        }
+    }
+
+    free(sc->extradata);
+    free(sc->extradata_size);
+    sc->extradata=NULL;
+    sc->extradata_size=NULL;
+    return ret;
+}
+
+int Cmp4Parse::ff_mov_read_stsd_entries(Cmp4Parse *c, CIOContext *pb, int entries)
+{
+    CStream *st;
+    MOVStreamContext *sc;
+
+    int pseudo_stream_id;
+    av_assert0 (c->m_nb_streams >= 1);
+    st = c->m_streams[c->m_nb_streams-1];
+    sc = (MOVStreamContext*)st->m_priv_data;
+
+    for (pseudo_stream_id = 0;
+         pseudo_stream_id < entries && !pb->m_eof_reached;
+         pseudo_stream_id++) {
+
+        //Parsing Sample description table
+        //enum AVCodecID id;
+        int ret, dref_id = 1;
+        MOVAtom a = { AV_RL32("stsd") };
+        int64_t start_pos = pb->avio_tell();
+        int64_t size    = pb->avio_rb32(); /* size */
+        uint32_t format = pb->avio_rl32(); /* data format */
+
+        printf("%c%c%c%c size:%d\n", *(((char*)&format) + 0), *(((char*)&format) + 1), *(((char*)&format) + 2), *(((char*)&format) + 3),size );
+         if (size >= 16) {
+            pb->avio_rb32(); /* reserved */
+            pb->avio_rb16(); /* reserved */
+            dref_id = pb->avio_rb16();
+        } else if (size <= 7) {
+            printf("invalid size %"PRId64" in stsd\n", size);
+            return AVERROR_INVALIDDATA;
+        }
+
+        /*
+        * 跳过烂七八糟的字段 
+        */
+       // pb->avio_skip(size - (pb->avio_tell() - start_pos));
+       // sc->stsd_count++;
+        //continue;
+
+        /**
+        * @默认均为视频 无音频
+        */
+        mov_parse_stsd_video(c, pb, st, sc);
+
+
+        /* this will read extra atoms at the end (wave, alac, damr, avcC, hvcC, SMI ...) */
+        a.size = size - (pb->avio_tell() - start_pos);
+        if (a.size > 8) {
+            if ((ret = mov_read_default(c, pb, a)) < 0)
+                return ret;
+        } else if (a.size > 0)
+            pb->avio_skip( a.size);
+
+
+    }
+    return 0;
+}
+
+
+int Cmp4Parse::ff_get_extradata(Codec *par, CIOContext *pb, int size)
+{
+    int ret = -1;
+    par->m_extradata =(uint8_t*) malloc(size);
+    if (par->m_extradata == NULL)
+        return ret;
+    ret = pb->avio_read(par->m_extradata, size);
+    printf("size:%d\n",size );
+    if (ret != size) {
+        free(par->m_extradata);
+        par->m_extradata == NULL;
+        par->m_extradata_size = 0;
+        printf("Failed to read extradata of size %d\n", size);
+        return ret < 0 ? ret : AVERROR_INVALIDDATA;
+    } 
+
+    par->m_extradata_size = ret;
+    return ret;
+}
+
+void Cmp4Parse::mov_parse_stsd_video(Cmp4Parse *c, CIOContext *pb,
+                                 CStream *st, MOVStreamContext *sc)
+{
+    uint8_t codec_name[32] = { 0 };
+    int64_t stsd_start;
+    unsigned int len;
+    int tmp, bit_depth, color_table_id, greyscale, i;
+
+    /* The first 16 bytes of the video sample description are already
+     * read in ff_mov_read_stsd_entries() */
+    stsd_start = pb->avio_tell() - 16;
+
+    pb->avio_rb16(); /* version */
+    pb->avio_rb16(); /* revision level */
+    pb->avio_rb32(); /* vendor */
+    pb->avio_rb32(); /* temporal quality */
+    pb->avio_rb32(); /* spatial quality */
+
+    st->m_codec->m_width  = pb->avio_rb16(); /* width */
+    st->m_codec->m_height = pb->avio_rb16(); /* height */
+
+    
+
+    pb->avio_rb32(); /* horiz resolution */
+    pb->avio_rb32(); /* vert resolution */
+    pb->avio_rb32(); /* data size, always 0 */
+    pb->avio_rb16(); /* frames per samples */
+
+    len = pb->avio_r8(); /* codec name, pascal string */
+    if (len > 31)
+        len = 31;
+
+    mov_read_mac_string(c, pb, len, (char*)codec_name, sizeof(codec_name));
+
+    if (len < 31)
+        pb->avio_skip(31 - len);
+
+  //  if (codec_name[0])
+   //      av_dict_set(&st->metadata, "encoder", codec_name, 0);
+
+    st->m_codec->m_bits_per_coded_sample = pb->avio_rb16(); /* depth */
+
+    printf("width:%d height:%d m_bits_per_coded_sample:%d\n",st->m_codec->m_width,st->m_codec->m_height ,st->m_codec->m_bits_per_coded_sample);
+
+    pb->avio_seek(stsd_start, SEEK_SET);
+
+     pb->avio_seek( 82, SEEK_CUR);
+
+     /* Get the bit depth and greyscale state */
+    tmp = pb->avio_rb16();
+    bit_depth = tmp & 0x1F;
+    greyscale = tmp & 0x20;
+
+    /* Get the color table ID */
+    color_table_id = pb->avio_rb16();
+
+    /* If the depth is 1, 2, 4, or 8 bpp, file is palettized. */
+    if ((bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8)) {
+        printf("not support bit_depth:%d\n",bit_depth );        
+        return;
+    }
+
+    printf("bit_depth:%d\n",bit_depth );
+
+}
+
+int Cmp4Parse::mov_read_mac_string(Cmp4Parse *c, CIOContext *pb, int len,
+                               char *dst, int dstlen)
+{
+    char *p = dst;
+    char *end = dst+dstlen-1;
+    int i;
+
+    for (i = 0; i < len; i++) {
+        uint8_t t, c = pb->avio_r8();
+
+        if (p >= end)
+            continue;
+
+        if (c < 0x80)
+            *p++ = c;
+        else if (p < end)
+            PUT_UTF8(mac_to_unicode[c-0x80], t, if (p < end) *p++ = t;);
+    }
+    *p = 0;
+    return p - dst;
+}
+
+int Cmp4Parse::get_sps_and_pps_from_mp4_avcc_extradata(Cmp4Parse * fmt_ctx, int stream_index, unsigned char *& sps_and_pps, int & sps_and_pps_length)
+{
+
+    Codec * video_dec_ctx = fmt_ctx->m_streams[stream_index]->m_codec;
+    
+    if (video_dec_ctx == NULL || video_dec_ctx->m_extradata_size <= 0 || video_dec_ctx->m_extradata == NULL){ return -1; }
+
+    //ISO/IEC 14496-15 5.2.4.1.1 关于avcC的数据的定义
+    // mp4 avcC box
+    //0x604cd0:       0x01    0x4d    0x00    0x2a    0xff    0xe1    0x00    0x1a
+    //0x604cd8:       0x67    0x4d    0x40    0x2a    0x96    0x52    0x01    0x40
+    //0x604ce0:       0x7b    0x60    0x29    0x10    0x00    0x00    0x03    0x00
+    //0x604ce8:       0x10    0x00    0x00    0x03    0x03    0xc9    0xda    0x16
+    //0x604cf0:       0x2d    0x12    0x01    0x00    0x04    0x68    0xeb    0x73
+    //0x604cf8:       0x52
+
+    unsigned char * sps = NULL;
+    unsigned char * pps = NULL;
+
+    int sps_length = 0;
+    int pps_length = 0;
+
+    unsigned char * p = video_dec_ctx->m_extradata;
+
+    unsigned char configurationVersion  = *p; p++;
+    if (configurationVersion != 1){ sps_and_pps_length = 0; return -1; }
+    
+//    m_is_avc1 = true;
+
+    printf("%s: this video file is [H264 - MPEG-4 AVC (part 10) (avc1)]\n", __FUNCTION__);
+
+    unsigned char AVCProfileIndication = *p; p++;
+    unsigned char profile_compatibility = *p; p++;
+    unsigned char AVCLevelIndication = *p; p++;
+    
+    unsigned char reserved1 = ((*p) & 0xFC) >> 2; // 0xFC = 0b 1111 1100，保留字节位
+    if (reserved1 != 0x3F){ sps_and_pps_length = 0; return -1; }
+
+    unsigned char lengthSizeMinusOne = ((*p) & 0x03) + 1; p++; //NALU长度，一般等于4
+    
+    unsigned char reserved2 = ((*p) & 0xE0) >> 5; // 0xE0 = 0b 1110 0000，保留字节位
+    if (reserved2 != 0x07){ sps_and_pps_length = 0; return -1; }
+
+    unsigned char numOfSequenceParameterSets = (*p) & 0x1F; p++; //sps个数，一般等于1
+    printf("%s: num of sps: %d\n", __FUNCTION__, numOfSequenceParameterSets);
+    
+    if (numOfSequenceParameterSets <= 0){ return -1; }
+
+    for(int i = 0; i < numOfSequenceParameterSets; i++)
+    {
+        int sequenceParameterSetLength = (*p) << 8 | (*(p+1)); p += 2; //当前sps长度
+
+        if(((*p) & 0x1F) != 0x07) //0x67
+        {
+            printf("%s: h264 nalu sps header must be 00 00 00 01 67\n", __FUNCTION__);
+            continue;
+        }
+
+        sps_length = sequenceParameterSetLength;
+        sps = new unsigned char[sps_length + 4];
+        sps[0] = 0x00;
+        sps[1] = 0x00;
+        sps[2] = 0x00;
+        sps[3] = 0x01;
+        memcpy(sps + 4, p, sps_length);
+        p += sps_length;
+
+        break; //暂时只读取一个sps
+    }
+
+    if (NULL == sps) {
+        printf("%s:sps == NULL\n",__FUNCTION__);
+        return -1;
+    }
+
+    unsigned char numOfPictureParameterSets = *p; p++; //pps个数，一般等于1
+    printf("%s: num of pps: %d\n", __FUNCTION__, numOfPictureParameterSets);
+    
+    if (numOfPictureParameterSets <= 0){ return -1; }
+
+    for(int i = 0; i < numOfPictureParameterSets; i++)
+    {
+        int pictureParameterSetLength = (*p) << 8 | (*(p+1)); p += 2; //当前pps长度
+        
+        if(((*p) & 0x1F) != 0x08) //0x68
+        {
+            printf("%s: h264 nalu pps header must be 00 00 00 01 68\n", __FUNCTION__);
+            continue;
+        }
+
+        pps_length = pictureParameterSetLength;
+        pps = new unsigned char[pps_length + 4];
+        pps[0] = 0x00;
+        pps[1] = 0x00;
+        pps[2] = 0x00;
+        pps[3] = 0x01;
+        memcpy(pps + 4, p, pps_length);
+        p += pps_length;
+
+        break; //暂时只读取一个pps
+    }
+
+    if (NULL == pps) {
+        printf("%s:pps == NULL\n",__FUNCTION__);
+        if(sps != NULL){delete [] sps; sps = NULL;}
+        return -1;
+    }
+
+    int read_size = p - video_dec_ctx->m_extradata;
+    if (read_size > video_dec_ctx->m_extradata_size){ return -1; }
+
+    //---------------------------------------
+    if(sps_and_pps != NULL){delete [] sps_and_pps; sps_and_pps = NULL;}
+    sps_and_pps_length = sps_length + pps_length + 8;
+
+    sps_and_pps = new unsigned char[sps_and_pps_length];
+
+    memcpy(sps_and_pps, sps, sps_length + 4);
+    memcpy(sps_and_pps + sps_length + 4, pps, pps_length + 4);
+
+    if(sps != NULL){delete [] sps; sps = NULL;}
+    if(pps != NULL){delete [] pps; pps = NULL;}
+
+    return 0;
+}
+
+int Cmp4Parse::mov_read_glbl(Cmp4Parse *c, CIOContext *pb, MOVAtom atom)
+{
+    CStream *st;
+    int ret;
+
+    /**
+    * @ 在找到trak时已经建立了CStream
+    */
+    if (c->m_nb_streams < 1)
+        return 0;
+
+    st = c->m_streams[c->m_nb_streams-1];
+
+    if ((uint64_t)atom.size > (1<<30))
+        return AVERROR_INVALIDDATA;
+
+    if (atom.size >= 10) {
+        // Broken files created by legacy versions of libavformat will
+        // wrap a whole fiel atom inside of a glbl atom.
+        unsigned size = pb->avio_rb32();
+        unsigned type = pb->avio_rl32();
+        pb->avio_seek(-8, SEEK_CUR);
+        if (type == MKTAG('f','i','e','l') && size == atom.size)
+            return mov_read_default(c, pb, atom);
+        //*(((char*)&type)+0),*(((char*)&type)+1),*(((char*)&type)+2),*(((char*)&type)+3)
+      // printf("  size:%d\n",size );
+    } 
+
+    if (st->m_codec->m_extradata_size > 1 && st->m_codec->m_extradata) {
+        printf( "ignoring multiple glbl\n");
+        return 0;
+    }
+
+    if (st->m_codec->m_extradata) {
+        free(st->m_codec->m_extradata);    
+        st->m_codec->m_extradata = NULL;
+    }
+    ret = ff_get_extradata(st->m_codec, pb, atom.size);
+    if (ret < 0)
+        return ret;
 
 
     return 0;
@@ -927,7 +1370,7 @@ int Cmp4Parse::mov_read_stsc(Cmp4Parse *c, CIOContext *pb, MOVAtom atom)
         return AVERROR_INVALIDDATA;
 
 
-    printf("track[%u].stsc.entries = %u\n", c->m_nb_streams - 1, entries);
+   // printf("track[%u].stsc.entries = %u\n", c->m_nb_streams - 1, entries);
 
     if (!entries)
         return 0;

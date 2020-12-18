@@ -9,6 +9,42 @@
 //typedef  long long int64_t;
 //typedef unsigned long long uint64_t;
 
+/**
+ * @def PUT_UTF8(val, tmp, PUT_BYTE)
+ * Convert a 32-bit Unicode character to its UTF-8 encoded form (up to 4 bytes long).
+ * @param val is an input-only argument and should be of type uint32_t. It holds
+ * a UCS-4 encoded Unicode character that is to be converted to UTF-8. If
+ * val is given as a function it is executed only once.
+ * @param tmp is a temporary variable and should be of type uint8_t. It
+ * represents an intermediate value during conversion that is to be
+ * output by PUT_BYTE.
+ * @param PUT_BYTE writes the converted UTF-8 bytes to any proper destination.
+ * It could be a function or a statement, and uses tmp as the input byte.
+ * For example, PUT_BYTE could be "*output++ = tmp;" PUT_BYTE will be
+ * executed up to 4 times for values in the valid UTF-8 range and up to
+ * 7 times in the general case, depending on the length of the converted
+ * Unicode character.
+ */
+#define PUT_UTF8(val, tmp, PUT_BYTE)\
+    {\
+        int bytes, shift;\
+        uint32_t in = val;\
+        if (in < 0x80) {\
+            tmp = in;\
+            PUT_BYTE\
+        } else {\
+            bytes = (in + 4) / 5;\
+            shift = (bytes - 1) * 6;\
+            tmp = (256 - (256 >> bytes)) | (in >> shift);\
+            PUT_BYTE\
+            while (shift >= 6) {\
+                shift -= 6;\
+                tmp = 0x80 | ((in >> shift) & 0x3f);\
+                PUT_BYTE\
+            }\
+        }\
+    }
+
 
 #define AV_NOPTS_VALUE          ((int64_t)UINT64_C(0x8000000000000000))
 
@@ -21,6 +57,11 @@ typedef struct MOVStsc {
 
 struct MOVStreamContext
 {
+    /** extradata array (and size) for multiple stsd */
+    uint8_t **extradata;
+    int *extradata_size;
+    int stsd_count;
+
     int tmp;
     int current_sample;
     int64_t data_size;

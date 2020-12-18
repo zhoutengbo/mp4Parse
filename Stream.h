@@ -3,7 +3,7 @@
 #include "mp4Parse.h"
 #include "Codec.h"
 #include "common.h"
-
+#include "Codec.h"
 
 
 class CStream
@@ -14,6 +14,8 @@ public:
 	
 	static CStream *avformat_new_stream(Cmp4Parse *s, const Codec *c);
 	static void free_stream(CStream **pst);
+
+    void setCodec(Codec *codec);
 
 #define MAX_STD_TIMEBASES (30*12+30+3+6)
 
@@ -61,6 +63,8 @@ public:
     void *m_priv_data;
 
     int m_index;    /**< stream index in AVFormatContext */
+
+    Codec *m_codec;
 };
 
 #endif //__FORMATCONTEXT_H__

@@ -11,11 +11,14 @@ CStream::CStream()
 	m_index_entries = NULL;
 	m_nb_index_entries = 0;
 	m_index_entries_allocated_size = 0;
+
+    m_codec = NULL;
 }
 CStream::~CStream()
 {
 
 }
+
 
 CStream *CStream::avformat_new_stream(Cmp4Parse *s, const Codec *c)
 {
@@ -55,6 +58,7 @@ FF_DISABLE_DEPRECATION_WARNINGS
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
 	
+    st->m_codec = new Codec;
 	//st->internal = av_mallocz(sizeof(*st->internal));
     //if (!st->internal)
     //	goto fail;

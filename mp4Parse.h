@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "IOContext.h"
+#include "Codec.h"
 class CStream;
 
 
@@ -38,6 +39,9 @@ public:
     static int mov_read_stsc(Cmp4Parse *c, CIOContext *pb, MOVAtom atom);
     static int mov_read_trun(Cmp4Parse *c, CIOContext *pb, MOVAtom atom);
     static int mov_read_stsz(Cmp4Parse *c, CIOContext *pb, MOVAtom atom);
+    static int mov_read_stsd(Cmp4Parse *c, CIOContext *pb, MOVAtom atom);
+    static int mov_read_glbl(Cmp4Parse *c, CIOContext *pb, MOVAtom atom);
+
 
 
     static void mov_build_index(Cmp4Parse *mov, CStream *st);
@@ -67,6 +71,18 @@ public:
 
     static int io_read_packet(void *opaque, uint8_t *buf, int buf_size);
     static int64_t io_seek(void *opaque, int64_t offset, int whence);
+
+
+    static int ff_mov_read_stsd_entries(Cmp4Parse *c, CIOContext *pb, int entries);
+
+    static int ff_get_extradata(Codec *par, CIOContext *pb, int size);
+    static void mov_parse_stsd_video(Cmp4Parse *c, CIOContext *pb,
+                                 CStream *st, MOVStreamContext *sc);
+
+    static int mov_read_mac_string(Cmp4Parse *c, CIOContext *pb, int len,
+                               char *dst, int dstlen);
+
+    int get_sps_and_pps_from_mp4_avcc_extradata(Cmp4Parse * fmt_ctx, int stream_index, unsigned char *& sps_and_pps, int & sps_and_pps_length);
 #endif
 	/**
      * Allow non-standard and experimental extension
